@@ -20,4 +20,14 @@ class DBservices:
             return True if xdata.count() > 0 else False
         except Exception as e:
             return e
+    
+    def fetchAllData(self):
+        try:
+            cur = self.db["github_history"].find().sort("_id",pymongo.DESCENDING)
+            retObj = []
+            for i in cur:
+                retObj.append(i)
+            return {} if cur.count() == 0 else retObj
+        except Exception as e:
+            return e
 
