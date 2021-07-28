@@ -1,21 +1,12 @@
 from flask import Blueprint, request
 import uuid
-import pymongo
-
-# from app.services.db_service import db_service
+from app.services.DBservices import DBservices
+db = DBservices()
 
 webhook = Blueprint('Webhook', __name__, url_prefix='/webhook')
-client = pymongo.MongoClient('localhost', 27017)
-db = client.techstax
 
-def saveToHistory(dataObj):
-    try:
-        db.github_history.insert_one(dataObj)
-        return True
-    except:
-        return False
-
-# Webhook defined for recording the push and merge events
+# Webhook defined for recording the push and merge events.
+# Event name in Github webhook Dashboard: "Just the push event."
 @webhook.route('/track_push_n_merge', methods=["POST"])
 def track_push_n_merge():
     try:
@@ -37,7 +28,7 @@ def track_push_n_merge():
                 "to_branch" : to_branch,
                 "timestamp" : request.json.get("head_commit")["timestamp"]
             }
-            if saveToHistory(dataObj):
+            if db.saveToHistory(dataObj):
                 return {"error" : False, "message" : "Data is sucessfully inserted into the system", "data" : dataObj}, 200
             else:
                 return {"error" : True, "message" : "Something went wrong !!"}, 403
@@ -47,14 +38,14 @@ def track_push_n_merge():
         return {"error" : True, "message" : str(e)}, 400
 
 
-# Webhook defined for recording the pull request event
+# Webhook defined for recording the pull request events.
+# Event name in Github webhook Dashboard: "Pull requests"
 @webhook.route('/pull_request', methods=["POST"])
 def pull_request():
     try:
         if request.headers['Content-Type'] == 'application/json':
             rid = request.json.get("pull_request")["id"]
-            xdata = db.github_history.find({'request_id': rid })
-            if xdata.count() == 0:
+            if db.isExist(rid) == False:
                 dataObj = {
                     "_id": uuid.uuid4(),
                     "request_id": rid,
@@ -64,7 +55,7 @@ def pull_request():
                     "to_branch" : request.json.get("pull_request")["base"]["ref"],
                     "timestamp" : request.json.get("pull_request")["created_at"]
                 }
-                if saveToHistory(dataObj):
+                if db.saveToHistory(dataObj):
                     return {"error" : False, "message" : "Data is sucessfully inserted into the system", "data" : dataObj}, 200
                 else:
                     return {"error" : True, "message" : "Something went wrong !!"}, 403
